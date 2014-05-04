@@ -7,6 +7,17 @@ menuconfig FB_ROCKCHIP
         ---help---
           Framebuffer driver for rockchip based platform
 
+config RK_FB_FIXED_SCALING
+	bool "Force screen centered LCDC scaling"
+	depends on FB_ROCKCHIP
+	help
+	This option forces a resized LCDC layer (window) to be placed in the
+	center of the screen. Removes a lot of the flexility of the hardware
+	which allows almost arbitrary placement and scaling of a layer. It
+	might have been used for the Android feature which allows scaling
+	down of the active output relative to the screen. Disable for hardware
+	accelerated XV support in xf86-video-fbturbo.
+
 config EDID_BASICTOSVD_GEN2THOMAS_FIX
 	bool     "EDID fix by gen2thomas to make all resolutions available"
   help

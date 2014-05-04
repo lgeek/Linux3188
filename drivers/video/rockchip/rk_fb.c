@@ -535,14 +535,21 @@ static int rk_fb_set_par(struct fb_info *info)
 		xsize = screen->x_res;
 		ysize = screen->y_res;
 	}
-	
-       //$_rbox_$_modify_$_zhengyang modified for box display system
-       xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
-       ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
-       xsize = screen->x_res * dev_drv->x_scale/100;
-       ysize = screen->y_res * dev_drv->y_scale/100;
-//       printk("[%s] xsize %d ysize %d id %d\n", __FUNCTION__, xsize, ysize, dev_drv->id);
-       //$_rbox_$_modify_$ zhengyang modified end
+
+	/* This forces scaling based on x_scale and y_scale parameters and moves the window to the
+	   center of the display, overwriting the options set just a few lines above. Only kept in
+	   case it's needed for backwards compatibility on some platform. The same effect can be
+	   obtained by selecting the right x/ypos and x/y_res options. Must be disabled for XV
+	   support in xf86-video-fbturbo. */
+	#ifdef CONFIG_RK_FB_FIXED_SCALING
+		//$_rbox_$_modify_$_zhengyang modified for box display system
+		xpos = (screen->x_res - screen->x_res*dev_drv->x_scale/100)>>1;
+		ypos = (screen->y_res - screen->y_res*dev_drv->y_scale/100)>>1;
+		xsize = screen->x_res * dev_drv->x_scale/100;
+		ysize = screen->y_res * dev_drv->y_scale/100;
+		// printk("[%s] xsize %d ysize %d id %d\n", __FUNCTION__, xsize, ysize, dev_drv->id);
+		//$_rbox_$_modify_$ zhengyang modified end
+	#endif
 
 #if defined(CONFIG_ONE_LCDC_DUAL_OUTPUT_INF) || defined(CONFIG_NO_DUAL_DISP)
 	if(screen->screen_id == 0) //this is for device like rk2928 ,whic have one lcdc but two display outputs
