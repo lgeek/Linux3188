@@ -308,15 +308,9 @@ static int rga_flush(rga_session *session, unsigned long arg)
     start = ktime_get();
     #endif
 
-    ret_timeout = wait_event_interruptible_timeout(session->wait, atomic_read(&session->done), RGA_TIMEOUT_DELAY);
+    ret_timeout = wait_event_timeout(session->wait, atomic_read(&session->done), RGA_TIMEOUT_DELAY);
 
-	if (unlikely(ret_timeout < 0)) {
-		pr_err("flush pid %d wait task ret %d\n", session->pid, ret);
-        mutex_lock(&rga_service.lock);
-        rga_del_running_list();
-        mutex_unlock(&rga_service.lock);
-        ret = -ETIMEDOUT;
-	} else if (0 == ret_timeout) {
+	if (unlikely(0 == ret_timeout)) {
 		pr_err("flush pid %d wait %d task done timeout\n", session->pid, atomic_read(&session->task_running));
         printk("bus  = %.8x\n", rga_read(RGA_INT));
         mutex_lock(&rga_service.lock);
@@ -677,7 +671,7 @@ static void rga_del_running_list(void)
         if(list_empty(&reg->session->waiting))
         {
             atomic_set(&reg->session->done, 1);
-            wake_up_interruptible_sync(&reg->session->wait);
+            __wake_up_sync(&reg->session->wait, TASK_NORMAL, 1);
         }
 
         rga_reg_deinit(reg);
@@ -724,7 +718,7 @@ static void rga_del_running_list_timeout(void)
         if(list_empty(&reg->session->waiting))
         {
             atomic_set(&reg->session->done, 1);
-            wake_up_interruptible_sync(&reg->session->wait);
+            __wake_up_sync(&reg->session->wait, TASK_NORMAL, 1);
         }
 
         rga_reg_deinit(reg);
@@ -885,17 +879,9 @@ static int rga_blit_sync(rga_session *session, struct rga_req *req)
         return ret;
     }
 
-    ret_timeout = wait_event_interruptible_timeout(session->wait, atomic_read(&session->done), RGA_TIMEOUT_DELAY);
+    ret_timeout = wait_event_timeout(session->wait, atomic_read(&session->done), RGA_TIMEOUT_DELAY);
 
-    if (unlikely(ret_timeout< 0))
-    {
-		pr_err("sync pid %d wait task ret %d\n", session->pid, ret_timeout);
-        mutex_lock(&rga_service.lock);
-        rga_del_running_list();
-        mutex_unlock(&rga_service.lock);
-        ret = -ETIMEDOUT;
-	}
-    else if (0 == ret_timeout)
+    if (unlikely(0 == ret_timeout))
     {
 		pr_err("sync pid %d wait %d task done timeout\n", session->pid, atomic_read(&session->task_running));
         mutex_lock(&rga_service.lock);
@@ -1070,7 +1056,7 @@ static int rga_release(struct inode *inode, struct file *file)
         /*Í¬²½*/
 	}
 
-	wake_up_interruptible_sync(&session->wait);
+	__wake_up_sync(&session->wait, TASK_NORMAL, 1);
 	mutex_lock(&rga_service.lock);
 	list_del(&session->list_session);
 	rga_service_session_clear(session);
