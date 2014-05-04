@@ -561,7 +561,7 @@ static int rga_mmu_info_color_palette_mode(struct rga_reg *reg, struct rga_req *
     uint32_t AllSize;
     uint32_t *MMU_Base = NULL;
     uint32_t *MMU_p;
-    int ret, status;
+    int ret, status = 0;
     uint32_t stride;
 
     uint8_t shift;

@@ -54,14 +54,10 @@ EXPORT_SYMBOL(video_data_to_mirroring);
 #endif
 static struct platform_device *g_fb_pdev;
 
-static struct rk_fb_rgb def_rgb_16 = {
-     red:    { offset: 11, length: 5, },
-     green:  { offset: 5,  length: 6, },
-     blue:   { offset: 0,  length: 5, },
-     transp: { offset: 0,  length: 0, },
-};
 //$_rbox_$_modify_$ zhengyang modified for box display system
+#if defined(CONFIG_RK_HDMI) && defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
 static int rk_fb_lcdc_state(void);
+#endif
 //$_rbox_$_modify_$ end
 /***************************************************************************
 fb0-----------lcdc0------------win1  for ui
@@ -131,6 +127,7 @@ static int rk_fb_close(struct fb_info *info,int user)
 	
     	return 0;
 }
+#if 0
 static void fb_copy_by_ipp(struct fb_info *dst_info, struct fb_info *src_info,int offset)
 {
 	struct rk29_ipp_req ipp_req;
@@ -174,7 +171,7 @@ static void fb_copy_by_ipp(struct fb_info *dst_info, struct fb_info *src_info,in
 	ipp_blit_sync(&ipp_req);
 	
 }
-
+#endif
 
 #if 0
 
@@ -202,18 +199,19 @@ static void hdmi_post_work(struct work_struct *work)
 
 static int rk_pan_display(struct fb_var_screeninfo *var, struct fb_info *info)
 {
-	struct rk_fb_inf *inf = dev_get_drvdata(info->device);
-	struct fb_fix_screeninfo *fix = &info->fix;
 	struct rk_lcdc_device_driver * dev_drv = (struct rk_lcdc_device_driver * )info->par;
-	struct fb_info * info2 = NULL; 
-	struct rk_lcdc_device_driver * dev_drv1  = NULL; 
-    	struct layer_par *par = NULL;
-	struct layer_par *par2 = NULL;
-    	int layer_id = 0;
+	struct layer_par *par = NULL;
+	int layer_id = 0;
 	u32 xoffset = var->xoffset;		// offset from virtual to visible 
 	u32 yoffset = var->yoffset;				
 	u32 xvir = var->xres_virtual;
 	u8 data_format = var->nonstd&0xff;
+#if defined(CONFIG_RK_HDMI) && defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
+	struct rk_fb_inf *inf = dev_get_drvdata(info->device);
+	struct fb_info * info2 = NULL;
+	struct rk_lcdc_device_driver * dev_drv1  = NULL;
+	struct layer_par *par2 = NULL;
+#endif
 	
 	layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
 	if(layer_id < 0)
@@ -289,7 +287,6 @@ EXPORT_SYMBOL(disp_get_ump_secure_id);
 
 static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 {
-	struct fb_fix_screeninfo *fix = &info->fix;
 	struct rk_lcdc_device_driver *dev_drv = (struct rk_lcdc_device_driver * )info->par;
 	u32 yuv_phy[2];
 	int  layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
@@ -407,7 +404,6 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 static int rk_fb_blank(int blank_mode, struct fb_info *info)
 {
     	struct rk_lcdc_device_driver *dev_drv = (struct rk_lcdc_device_driver * )info->par;
-	struct fb_fix_screeninfo *fix = &info->fix;
 	int layer_id;
 	
 	layer_id = dev_drv->fb_get_layer(dev_drv,info->fix.id);
@@ -478,13 +474,11 @@ static int rk_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 
 static int rk_fb_set_par(struct fb_info *info)
 {
-	struct rk_fb_inf *inf = dev_get_drvdata(info->device);
     	struct fb_var_screeninfo *var = &info->var;
     	struct fb_fix_screeninfo *fix = &info->fix;
     	struct rk_lcdc_device_driver * dev_drv = (struct rk_lcdc_device_driver * )info->par;
     	struct layer_par *par = NULL;
    	rk_screen *screen =dev_drv->cur_screen;
-	struct fb_info * info2 = NULL;
 	struct rk_lcdc_device_driver * dev_drv1  = NULL;
 	struct layer_par *par2 = NULL;
     	int layer_id = 0;	
@@ -497,6 +491,11 @@ static int rk_fb_set_par(struct fb_info *info)
 	u32 xvir = var->xres_virtual;
 	u32 yvir = var->yres_virtual;
 	u8 data_format = var->nonstd&0xff;
+#if defined(CONFIG_RK_HDMI) && defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
+	struct rk_fb_inf *inf = dev_get_drvdata(info->device);
+	struct fb_info *info2 = NULL;
+#endif
+
 //$_rbox_$_modify_$_zhengyang modified for box display system
 //	var->pixclock = dev_drv->pixclock;
 
@@ -827,12 +826,12 @@ EXPORT_SYMBOL(rk_direct_fb_show);
 
 //$_rbox_$_modify_$ zhengyang modified for box display system
 #if 1
+#if defined(CONFIG_RK_HDMI) && defined(CONFIG_DUAL_LCDC_DUAL_DISP_IN_KERNEL)
 int rk_fb_lcdc_state(void)
 {
 	struct rk_fb_inf *inf =  platform_get_drvdata(g_fb_pdev);
 	struct rk_lcdc_device_driver * dev_drv = NULL;
 	struct fb_info *info = NULL;
-	char name[6];
 	int i, layer_id, active = 0;
 	
 	for(i = 0; i < inf->num_lcdc; i++)  //find the driver the display device connected to
@@ -848,7 +847,7 @@ int rk_fb_lcdc_state(void)
 	else
 		return 0;
 }
-
+#endif
 //For box display system, we need to control lcdc separetely
 int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 {
@@ -856,7 +855,6 @@ int rk_fb_switch_screen(rk_screen *screen ,int enable ,int lcdc_id)
 	struct fb_info *info = NULL;
 	struct rk_lcdc_device_driver * dev_drv = NULL;
 	struct fb_var_screeninfo *var = NULL;
-	struct fb_fix_screeninfo *fix = NULL;
 	char name[6];
 	int ret, i, layer_id;
 	u16 xpos, ypos, xsize, ysize;
@@ -1226,7 +1224,7 @@ static int rk_request_fb_buffer(struct fb_info *fbi,int fb_id)
 	}
     return ret;
 }
-
+#if 0
 static int rk_release_fb_buffer(struct fb_info *fbi)
 {
 	if(!fbi)
@@ -1241,6 +1239,7 @@ static int rk_release_fb_buffer(struct fb_info *fbi)
 	return 0;
 	
 }
+#endif
 static int init_layer_par(struct rk_lcdc_device_driver *dev_drv)
 {
        int i;
