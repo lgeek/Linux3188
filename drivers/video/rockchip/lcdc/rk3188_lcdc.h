@@ -287,6 +287,8 @@
 #define DSP_LUT_ADDR		(0x800)
 
 
+#define CURSOR_BUF_SIZE	256
+
 #define CalScale(x, y)	             ((((u32)(x-1))*0x1000)/(y-1))
 
 struct rk3188_lcdc_device{
@@ -314,6 +316,8 @@ struct rk3188_lcdc_device{
 	struct clk		*dclk;				//lcdc dclk
 	struct clk		*aclk;				//lcdc share memory frequency
 	u32 pixclock;				
+
+	char *cursor_buf;
 };
 
 

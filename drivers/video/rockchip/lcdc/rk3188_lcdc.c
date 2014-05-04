@@ -30,6 +30,7 @@
 #include <asm/div64.h>
 #include <asm/uaccess.h>
 #include <mach/iomux.h>
+#include <asm/cacheflush.h>
 #include "../hdmi/rk_hdmi.h"
 #include "rk3188_lcdc.h"
 
@@ -885,6 +886,107 @@ static int rk3188_lcdc_blank(struct rk_lcdc_device_driver *dev_drv,
     	return 0;
 }
 
+static int rk3188_cursor_open(struct rk3188_lcdc_device *lcdc_dev, bool open)
+{
+	if(unlikely(!lcdc_dev->clk_on))
+	{
+		printk(KERN_INFO "%s: device clock is off\n", __func__);
+		return -EFAULT;
+	}
+
+	spin_lock(&lcdc_dev->reg_lock);
+
+	lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_HWC_EN | m_HWC_SIZE, v_HWC_EN(open) | v_HWC_SIZE(0));
+	lcdc_cfg_done(lcdc_dev);
+
+	spin_unlock(&lcdc_dev->reg_lock);
+
+	return 0;
+}
+
+static int rk3188_cursor_set_pos(struct rk_lcdc_device_driver *dev_drv, int x, int y)
+{
+	struct rk3188_lcdc_device *lcdc_dev = container_of(dev_drv,struct rk3188_lcdc_device,driver);
+	int xpos, ypos;
+#ifdef CONFIG_RK_FB_FIXED_SCALING
+	int xact, yact;
+#endif
+
+	if(unlikely(!lcdc_dev->clk_on))
+	{
+		printk(KERN_INFO "%s: device clock is off\n", __func__);
+		return -EFAULT;
+	}
+
+#ifdef CONFIG_RK_FB_FIXED_SCALING
+	xact = (lcdc_readl(lcdc_dev, WIN1_ACT_INFO) & 0xFFFF) + 1;
+	yact = ((lcdc_readl(lcdc_dev, WIN1_ACT_INFO) & 0xFFFF0000 ) >> 16) + 1;
+	xpos = (x * dev_drv->cur_screen->x_res * dev_drv->x_scale/100)/xact;
+	ypos = (y * dev_drv->cur_screen->y_res * dev_drv->y_scale/100)/yact;
+	xpos += dev_drv->cur_screen->x_res * (100 - dev_drv->x_scale)/200 + dev_drv->cur_screen->left_margin + dev_drv->cur_screen->hsync_len;
+	ypos += dev_drv->cur_screen->y_res * (100 - dev_drv->y_scale)/200 + dev_drv->cur_screen->upper_margin + dev_drv->cur_screen->vsync_len;
+#else
+	xpos = dev_drv->cur_screen->left_margin + dev_drv->cur_screen->hsync_len + x;
+	ypos = dev_drv->cur_screen->upper_margin + dev_drv->cur_screen->vsync_len + y;
+#endif
+	spin_lock(&lcdc_dev->reg_lock);
+
+	lcdc_writel(lcdc_dev, HWC_DSP_ST, v_DSP_STX(xpos)|v_DSP_STY(ypos));
+	lcdc_cfg_done(lcdc_dev);
+
+	spin_unlock(&lcdc_dev->reg_lock);
+	return 0;
+}
+
+static int rk3188_cursor_set_image(struct rk_lcdc_device_driver *dev_drv, char *imgdata)
+{
+	struct rk3188_lcdc_device *lcdc_dev = container_of(dev_drv,struct rk3188_lcdc_device,driver);
+
+	if(unlikely(!lcdc_dev->clk_on))
+	{
+		printk(KERN_INFO "%s: device clock is off\n", __func__);
+		return -EFAULT;
+	}
+
+	/* Since the LCDC uses DMA to read the cursor bitmap, we have to synchronize here.
+	   I would have expected memory allocated with the GFP_DMA flag to be coherent
+	   and to only require use of a memory barrier, but that doesn't seem to be the case.
+	   It seems we need to flush the data from L1 and L2 individually. Other
+	   implementations use flush_cache_all :) */
+	dsb();
+	dmac_flush_range(imgdata, imgdata + CURSOR_BUF_SIZE);
+	outer_flush_range(__pa(imgdata), __pa(imgdata) + CURSOR_BUF_SIZE);
+
+	spin_lock(&lcdc_dev->reg_lock);
+
+	lcdc_writel(lcdc_dev, HWC_MST, __pa(imgdata));
+	lcdc_msk_reg(lcdc_dev, SYS_CTRL, m_HWC_LODAD_EN, v_HWC_LODAD_EN(1));
+	lcdc_cfg_done(lcdc_dev);
+
+	spin_unlock(&lcdc_dev->reg_lock);
+	return 0;
+}
+
+static int rk3188_cursor_set_cmap(struct rk_lcdc_device_driver *dev_drv, int bg, int fg1, int fg2)
+{
+	struct rk3188_lcdc_device *lcdc_dev = container_of(dev_drv,struct rk3188_lcdc_device,driver);
+
+	if(unlikely(!lcdc_dev->clk_on))
+	{
+		printk(KERN_INFO "%s: device clock is off\n", __func__);
+		return -EFAULT;
+	}
+
+	spin_lock(&lcdc_dev->reg_lock);
+
+	lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT2, m_HWC_R|m_HWC_G|m_HWC_B, bg);
+	lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT1, m_HWC_R|m_HWC_G|m_HWC_B, fg1);
+	lcdc_msk_reg(lcdc_dev, HWC_COLOR_LUT0, m_HWC_R|m_HWC_G|m_HWC_B, fg2);
+	lcdc_cfg_done(lcdc_dev);
+
+	spin_unlock(&lcdc_dev->reg_lock);
+	return 0;
+}
 
 static int rk3188_lcdc_ioctl(struct rk_lcdc_device_driver *dev_drv, unsigned int cmd,unsigned long arg,int layer_id)
 {
@@ -895,6 +997,10 @@ static int rk3188_lcdc_ioctl(struct rk_lcdc_device_driver *dev_drv, unsigned int
 	int enable;
 	unsigned long flags;
 	int timeout;
+	struct fbcurpos pos;
+	struct fb_image img;
+	int cmap[3];
+
 	switch(cmd)
 	{
 		case RK_FBIOGET_PANEL_SIZE:    //get panel size
@@ -921,6 +1027,36 @@ static int rk3188_lcdc_ioctl(struct rk_lcdc_device_driver *dev_drv, unsigned int
 				}
 			}
 			break;
+
+		case FBIOPUT_SET_CURSOR_EN:
+			if(copy_from_user(&enable, (void*)arg, sizeof(enable))) {
+			    return -EFAULT;
+			}
+			return rk3188_cursor_open(lcdc_dev, enable);
+			break;
+		case FBIOPUT_SET_CURSOR_POS:
+			if(copy_from_user(&pos, (void*)arg, sizeof(pos))) {
+				return -EFAULT;
+			}
+			return rk3188_cursor_set_pos(dev_drv, pos.x , pos.y);
+			break;
+		case FBIOPUT_SET_CURSOR_IMG:
+			if(copy_from_user(lcdc_dev->cursor_buf, (void*)arg, CURSOR_BUF_SIZE)) {
+				return -EFAULT;
+			}
+			return rk3188_cursor_set_image(dev_drv, lcdc_dev->cursor_buf);
+			break;
+		case FBIOPUT_SET_CURSOR_CMAP:
+			if(copy_from_user(&img, (void*)arg, sizeof(img)))
+			    return -EFAULT;
+			return rk3188_cursor_set_cmap(dev_drv, img.bg_color, img.fg_color, 0);
+			break;
+		case FBIOPUT_SET_FULL_CURSOR_CMAP:
+			if(copy_from_user(&cmap, (void*)arg, sizeof(cmap)))
+			    return -EFAULT;
+			return rk3188_cursor_set_cmap(dev_drv, cmap[0], cmap[1], cmap[2]);
+			break;
+
 		default:
 			return -ENOIOCTLCMD;
 	}
@@ -1463,6 +1599,13 @@ static int __devinit rk3188_lcdc_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err3;
 	}
+	
+	lcdc_dev->cursor_buf = kzalloc(CURSOR_BUF_SIZE, GFP_DMA | GFP_KERNEL);
+	if (!lcdc_dev->cursor_buf) {
+		ret = -ENOMEM;
+		goto err3;
+	}
+	
 	lcdc_dev->dsp_lut_addr_base = (lcdc_dev->regs + DSP_LUT_ADDR);
 	printk("lcdc%d:reg_phy_base = 0x%08x,reg_vir_base:0x%p\n",pdev->id,lcdc_dev->reg_phy_base, lcdc_dev->regs);
 	lcdc_dev->driver.dev = dev;
@@ -1479,14 +1622,14 @@ static int __devinit rk3188_lcdc_probe(struct platform_device *pdev)
 	if(lcdc_dev->irq < 0)
 	{
 		dev_err(&pdev->dev, "cannot find IRQ for lcdc%d\n",lcdc_dev->id);
-		goto err3;
+		goto err4;
 	}
 	ret = devm_request_irq(dev,lcdc_dev->irq, rk3188_lcdc_isr, IRQF_DISABLED,dev_name(dev),lcdc_dev);
 	if (ret)
 	{
 	       dev_err(&pdev->dev, "cannot requeset irq %d - err %d\n", lcdc_dev->irq, ret);
 	       ret = -EBUSY;
-	       goto err3;
+	       goto err4;
 	}
 
 #ifndef GALLAND_CHANGED //Galland to fix FRAMEBUFFER_CONSOLE on rk30 and rk31
@@ -1505,7 +1648,7 @@ static int __devinit rk3188_lcdc_probe(struct platform_device *pdev)
 	{
 		printk(KERN_WARNING "no display device on lcdc%d!?\n",lcdc_dev->id);
 		ret = -ENODEV;
-		goto err3;
+		goto err4;
 	}
 #endif
 	
@@ -1521,6 +1664,7 @@ static int __devinit rk3188_lcdc_probe(struct platform_device *pdev)
 	return 0;
 
 err4:
+	kfree(lcdc_dev->cursor_buf);
 err3:
 	iounmap(lcdc_dev->regs);
 err2:
