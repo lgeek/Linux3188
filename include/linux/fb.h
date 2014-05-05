@@ -46,6 +46,7 @@ struct fbcon_decor_iowrapper32
 #define FBIOPUT_SET_CURSOR_CMAP    0x460c
 #define FBIOPUT_GET_CURSOR_RESOLUTION    0x460d
 #define FBIOPUT_GET_CURSOR_EN    0x460e
+#define FBIOGET_PHYMEMINFO		0x461D
 #define FBIOPUT_SET_FULL_CURSOR_CMAP    0x461E
 
 #ifdef __KERNEL__

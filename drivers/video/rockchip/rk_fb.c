@@ -295,6 +295,7 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 	int num_buf; //buffer_number
 	void __user *argp = (void __user *)arg;
 	int status;
+	struct rk_fb_mem_inf mem_info;
 	
 #ifdef CONFIG_MALI
         int secure_id_buf_num = 0; //IAM
@@ -310,6 +311,15 @@ static int rk_fb_ioctl(struct fb_info *info, unsigned int cmd,unsigned long arg)
 	//$_rbox_$_modify_$ end
 	switch(cmd)
 	{
+		case FBIOGET_PHYMEMINFO:
+			mem_info.yrgb = info->fix.smem_start;
+			mem_info.cbr  = info->fix.mmio_start;
+			mem_info.len  = info->fix.smem_len;
+
+			if (copy_to_user(argp, &mem_info, sizeof(mem_info)))
+				return -EFAULT;
+
+			break;
  		case FBIOPUT_FBPHYADD:
 			return info->fix.smem_start;
 			break;

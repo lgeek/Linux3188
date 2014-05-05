@@ -300,6 +300,13 @@ struct rk_fb_inf {
 	void * ump_wrapped_buffer[RK_MAX_FB_SUPPORT][2]; //IAM
 #endif
 };
+
+struct rk_fb_mem_inf {
+	uint32_t yrgb;
+	uint32_t cbr;
+	uint32_t len;
+};
+
 #ifdef CONFIG_MALI
 extern int (*disp_get_ump_secure_id)(struct fb_info *info, struct rk_fb_inf *g_fbi, unsigned long arg, int buf);
 #endif
