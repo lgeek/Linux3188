@@ -46,6 +46,7 @@ List of functional changes
 * [RK FB: make screen-centered scaling optional](https://github.com/lgeek/Linux3188/commit/d0444e580a32adf1890d99c1691153199475333f) - enables arbitrary positioning and scaling of the video layer, for use by the XV driver
 * [RGA: use uninterruptible sleep for ioctls](https://github.com/lgeek/Linux3188/commit/c6f5730a30b3de6727cf31be0ba2ae7c59db5e7f) - bugfix and performance improvement for RGA, which is used for hardware accelerated framebuffer-to-framebuffer blits
 * [RK3188 LCDC: add support for hardware cursor](https://github.com/lgeek/Linux3188/commit/9a2c02fb0072482be80baf8617d6fd583215efd7) - the hardware cursor is required because it can show up above the video layer. It might also come with slight performance benefits since it's completely rendered by hardware, above the framebuffer.
+* [RK FB: add ioctl for reading fb addresses and length](https://github.com/lgeek/Linux3188/commit/ac210001b05b3df3bb351f043f1391b9a12d199b) - used to allocate off-screen framebuffer memory for temporary RGA buffers and for the video layer
 
 
 aloksinha's README starts below
