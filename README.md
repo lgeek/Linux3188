@@ -8,6 +8,16 @@ I'm working on adding some 2D graphics acceleration for Xorg running on the RK31
 
 At the moment, this repository contains some kernel patches required to use hardware acceleration. The Xorg driver based on [xf86-video-fbturbo](https://github.com/lgeek/xf86-video-fbturbo) will eventually be available [here](https://github.com/ssvb/xf86-video-fbturbo). I intend to get my contributions merged in the upstream channels ASAP.
 
+Build notes
+-----------
+
+There seems to be a bug causing some builds to hang while doing the initial setup of the DDR controller. This isn't caused by my patches and I haven't yet figured out the exact cause. Whether this happens or not seems to depend entirely on the toolchain. 
+
+For cross-compiling, a version known to produce working results is gcc (arm-none-eabi-) 4.5.1, shipped with [CodeSourcery G++ Lite](http://www.mentor.com/embedded-software/sourcery-tools/sourcery-codebench/editions/lite-edition/) 2010.09-51, but I wouldn't really recommend such an old version (it's just something I had set up on my machine).
+
+gcc (arm-none-eabi-) 4.9.0 from the Arch repository is known to produce bad builds.
+
+Let me know if builds produced by recent releases of the arm-linux-gnueabihf- port work. Other ways to contribute would be by debugging the cause of the problem or by submitting a patch.
 
 Users
 -----
