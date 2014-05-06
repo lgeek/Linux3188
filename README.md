@@ -6,7 +6,7 @@ What?
 
 I'm working on adding some 2D graphics acceleration for Xorg running on the RK3188 SoC. There are various low cost mini computers based on this SoC which provide excellent value for money, but GNU/Linux isn't officially supported. The work done by the community allows us to run it, but the GUI can sometimes feel slow and software scaling of video is just way too slow.
 
-At the moment, this repository contains some kernel patches required to use hardware acceleration. The Xorg driver based on [xf86-video-fbturbo](https://github.com/lgeek/xf86-video-fbturbo) will eventually be available [here](https://github.com/ssvb/xf86-video-fbturbo). I intend to get my contributions merged in the upstream channels ASAP.
+At the moment, this repository contains some kernel patches required to use hardware acceleration. The Xorg driver based on [xf86-video-fbturbo](https://github.com/ssvb/xf86-video-fbturbo) is available [here](https://github.com/lgeek/xf86-video-fbturbo). I intend to get my contributions merged in the upstream channels ASAP.
 
 Build notes
 -----------
@@ -17,12 +17,12 @@ For cross-compiling, a version known to produce working results is gcc (arm-none
 
 gcc (arm-none-eabi-) 4.9.0 from the Arch repository is known to produce bad builds.
 
-Let me know if builds produced by recent releases of the arm-linux-gnueabihf- port work. Other ways to contribute would be by debugging the cause of the problem or by submitting a patch.
+Let me know if builds produced by recent releases of the arm-linux-gnueabihf- port work. Other ways to contribute would be by debugging the cause of the problem or by submitting a fix.
 
 Users
 -----
 
-Since I haven't yet published the Xorg driver, this repository is basically useless for you at this point. Please come back later for updates. :)
+You probably want to go [here](https://github.com/lgeek/xf86-video-fbturbo).
 
 Sorry, I don't have the time to provide any support. Bug reports to the [issue tracker](https://github.com/lgeek/Linux3188/issues) are welcomed, but please don't submit generic support requests.
 
