@@ -754,14 +754,23 @@ static struct fb_ops fb_ops = {
 
 
 static struct fb_var_screeninfo def_var = {
+#ifdef CONFIG_RK_FB_DEFAULT_32BPP
+	.red    = {16,8,0},
+	.green  = {8,8,0},
+	.blue   = {0,8,0},
+	.transp = {24,8,0},
+	// mplayer with the x11 vo seem to treat both RGBA and BGRA as BGRA
+	.nonstd = HAL_PIXEL_FORMAT_BGRA_8888,
+#else
 	.red    = {11,5,0},//default set to rgb565,the boot logo is rgb565
 	.green  = {5,6,0},
 	.blue   = {0,5,0},
-	.transp = {0,0,0},	
-#ifdef  CONFIG_LOGO_LINUX_BMP
-	.nonstd      = HAL_PIXEL_FORMAT_RGBA_8888,
-#else
-	.nonstd      = HAL_PIXEL_FORMAT_RGB_565,   //(ypos<<20+xpos<<8+format) format
+	.transp = {0,0,0},
+	#ifdef CONFIG_LOGO_LINUX_BMP
+	.nonstd = HAL_PIXEL_FORMAT_RGBA_8888,
+	#else
+	.nonstd = HAL_PIXEL_FORMAT_RGB_565,
+	#endif
 #endif
 	.grayscale   = 0,  //(ysize<<20+xsize<<8)
 	.activate    = FB_ACTIVATE_NOW,
@@ -1433,8 +1442,8 @@ int rk_fb_register(struct rk_lcdc_device_driver *dev_drv,
 		fbi->var.xres = fb_inf->lcdc_dev_drv[lcdc_id]->cur_screen->x_res;
 		fbi->var.yres = fb_inf->lcdc_dev_drv[lcdc_id]->cur_screen->y_res;
 		fbi->var.grayscale |= (fbi->var.xres<<8) + (fbi->var.yres<<20);
-#ifdef  CONFIG_LOGO_LINUX_BMP
-		fbi->var.bits_per_pixel = 32; 
+#if defined(CONFIG_LOGO_LINUX_BMP) || defined(CONFIG_RK_FB_DEFAULT_32BPP)
+		fbi->var.bits_per_pixel = 32;
 #else
 		fbi->var.bits_per_pixel = 16; 
 #endif

@@ -17,6 +17,19 @@ config RK_FB_FIXED_SCALING
 	might have been used for the Android feature which allows scaling
 	down of the active output relative to the screen. Disable for hardware
 	accelerated XV support in xf86-video-fbturbo.
+	
+config RK_FB_DEFAULT_32BPP
+	bool "Default to 32 bit color depth"
+	depends on FB_ROCKCHIP
+	help
+	Sets the framebuffer to 32 bit BGRA color mode. If disabled, fallback
+	to the old color depth setting: either 16 bit (RGB565) if
+	CONFIG_LOGO_LINUX_BMP is disabled, or 32 bit RGBA if enabled. Warning:
+	the configuration for using 32 bit RGBA seems to be incomplete.
+	Only enable if your machine has at least a 32 bit wide memory interface;
+	this is known to cause significant performance degradation on machines
+	with a 16 bit memory interface. This does not affect video displayed
+	using the hardware accelerated XV driver.	
 
 config EDID_BASICTOSVD_GEN2THOMAS_FIX
 	bool     "EDID fix by gen2thomas to make all resolutions available"
